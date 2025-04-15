@@ -1,16 +1,14 @@
 {
-  "object": {
-    "pins": [
-      {
-        "package": "PythonKit",
-        "repositoryURL": "https://github.com/pvieito/PythonKit",
-        "state": {
-          "branch": null,
-          "revision": "6fee7617cfa910fbac7035276e295ba967adbbb4",
-          "version": "0.5.1"
-        }
+  "pins" : [
+    {
+      "identity" : "pythonkit",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/JonathanPenner3D/PythonKit.git",
+      "state" : {
+        "branch" : "master",
+        "revision" : "fe7a207548d5a700c9f133e65d5d02a7a76a1bd9"
       }
-    ]
-  },
-  "version": 1
+    }
+  ],
+  "version" : 2
 }

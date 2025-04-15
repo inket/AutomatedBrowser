@@ -9,7 +9,7 @@ let package = Package(
         .library(name: "AutomatedBrowser", targets: ["AutomatedBrowser"]),
     ],
     dependencies: [
-        .package(url: "https://github.com/pvieito/PythonKit.git", from: "0.3.1"),
+        .package(url: "https://github.com/JonathanPenner3D/PythonKit.git", branch: "master"),
     ],
     targets: [
         .target(name: "AutomatedBrowser", dependencies: [.byName(name: "PythonKit")]),
