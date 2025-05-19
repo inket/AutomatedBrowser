@@ -2,6 +2,11 @@ import Foundation
 import PythonKit
 
 public final class AutomatedBrowser {
+    public enum BrowserType {
+        case chrome(options: [String])
+        case undetectedChrome
+    }
+
     enum BrowserError: Error {
         case noCookiesToSave
         case couldNotSaveCookies(_ error: Error)
@@ -15,21 +20,24 @@ public final class AutomatedBrowser {
 
     // MARK: - Lifecycle
 
-    public init(headless: Bool, undetected: Bool = false) throws {
+    public init(browser: BrowserType, headless: Bool) throws {
         let sys = dependencies.sys
         print("[AutomatedBrowser] Python \(sys.version_info.major).\(sys.version_info.minor)")
 
-        if undetected {
-            driver = dependencies.undetectedchromedriver.Chrome(headless: headless)
-        } else {
+        switch browser {
+        case .chrome(options: let options):
             let webdriver = dependencies.webdriver
-            let options = webdriver.ChromeOptions()
+            let chromeOptions = webdriver.ChromeOptions()
             if headless {
-                options.add_argument("--headless=new")
+                chromeOptions.add_argument("--headless=new")
             }
-            driver = webdriver.Chrome(options: options)
+            for option in options {
+                chromeOptions.add_argument(option)
+            }
+            driver = webdriver.Chrome(options: chromeOptions)
+        case .undetectedChrome:
+            driver = dependencies.undetectedchromedriver.Chrome(headless: headless)
         }
-
     }
 
     public func quit() {
