@@ -1,7 +1,7 @@
 import Foundation
 import AutomatedBrowser
 
-let browser = try! AutomatedBrowser(headless: false)
+let browser = try! AutomatedBrowser(browser: .chrome(options: []), headless: false)
 browser.load("https://github.com/inket")
 print("Current URL: \(browser.currentURL ?? "")")
 print("Source: \(browser.pageSource?.prefix(60) ?? "")...")
