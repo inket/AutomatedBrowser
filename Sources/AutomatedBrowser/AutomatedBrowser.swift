@@ -27,21 +27,23 @@ public final class AutomatedBrowser {
         switch browser {
         case .chrome(options: let options):
             let webdriver = dependencies.webdriver
-            let chromeOptions = webdriver.ChromeOptions()
+            let chromeOptions = try webdriver.ChromeOptions.throwing.dynamicallyCall(withArguments: [])
             if headless {
-                chromeOptions.add_argument("--headless=new")
+                try chromeOptions.add_argument.throwing.dynamicallyCall(withArguments: "--headless=new")
             }
             for option in options {
-                chromeOptions.add_argument(option)
+                try chromeOptions.add_argument.throwing.dynamicallyCall(withArguments: option)
             }
             driver = webdriver.Chrome(options: chromeOptions)
         case .undetectedChrome:
-            driver = dependencies.undetectedchromedriver.Chrome(headless: headless)
+            driver = try dependencies.undetectedchromedriver.Chrome.throwing.dynamicallyCall(
+                withKeywordArguments: ["headless": headless]
+            )
         }
     }
 
-    public func quit() {
-        driver.quit()
+    public func quit() throws {
+        try driver.quit.throwing.dynamicallyCall(withArguments: [])
     }
 }
 
@@ -49,31 +51,43 @@ public final class AutomatedBrowser {
 
 extension AutomatedBrowser {
     public var pageSource: String? {
-        String(driver.page_source)
+        get throws {
+            guard let source = driver.checking[dynamicMember: "page_source"] else {
+                throw PythonError.invalidCall(driver)
+            }
+
+            return String(source)
+        }
     }
 
     public var currentURL: String? {
-        String(driver.current_url)
+        get throws {
+            guard let url = driver.checking[dynamicMember: "current_url"] else {
+                throw PythonError.invalidCall(driver)
+            }
+
+            return String(url)
+        }
     }
 }
 
 // MARK: - Navigation
 
 extension AutomatedBrowser {
-    public func load(_ url: String) {
-        driver.get(url)
+    public func load(_ url: String) throws {
+        try driver.get.throwing.dynamicallyCall(withArguments: url)
     }
 
-    public func forward() {
-        driver.forward()
+    public func forward() throws {
+        try driver.forward.throwing.dynamicallyCall(withArguments: [])
     }
 
-    public func back() {
-        driver.back()
+    public func back() throws {
+        try driver.back.throwing.dynamicallyCall(withArguments: [])
     }
 
-    public func refresh() {
-        driver.refresh()
+    public func refresh() throws {
+        try driver.refresh.throwing.dynamicallyCall(withArguments: [])
     }
 }
 
@@ -103,23 +117,25 @@ extension AutomatedBrowser {
 
         let cookies = dependencies.json.loads(fileContents)
         for cookie in cookies {
-            driver.add_cookie(cookie)
+            try driver.add_cookie.throwing.dynamicallyCall(withArguments: cookie)
         }
     }
 
-    public func deleteAllCookies() {
-        driver.delete_all_cookies()
+    public func deleteAllCookies() throws {
+        try driver.delete_all_cookies.throwing.dynamicallyCall(withArguments: [])
     }
 }
 
 // MARK: - Interactions
 
 extension AutomatedBrowser {
-    public func scroll(by amount: CGSize) {
-        dependencies
+    public func scroll(by amount: CGSize) throws {
+        try dependencies
             .webdriver
             .ActionChains(driver)
             .scroll_by_amount(Int(amount.width), Int(amount.height))
-            .perform()
+            .perform
+            .throwing
+            .dynamicallyCall(withArguments: [])
     }
 }
