@@ -20,7 +20,7 @@ public final class AutomatedBrowser {
 
     // MARK: - Lifecycle
 
-    public init(browser: BrowserType, headless: Bool) throws {
+    public init(browser: BrowserType, headless: Bool, chromeBinaryPath: String? = nil) throws {
         let sys = dependencies.sys
         print("[AutomatedBrowser] Python \(sys.version_info.major).\(sys.version_info.minor)")
 
@@ -28,16 +28,36 @@ public final class AutomatedBrowser {
         case .chrome(options: let options):
             let webdriver = dependencies.webdriver
             let chromeOptions = try webdriver.ChromeOptions.throwing.dynamicallyCall(withArguments: [])
+
             if headless {
                 try chromeOptions.add_argument.throwing.dynamicallyCall(withArguments: "--headless=new")
             }
+
             for option in options {
                 try chromeOptions.add_argument.throwing.dynamicallyCall(withArguments: option)
             }
-            driver = webdriver.Chrome(options: chromeOptions)
+
+            if let chromeBinaryPath {
+                chromeOptions.binary_location = chromeBinaryPath.pythonObject
+            }
+
+            driver = try webdriver.Chrome.throwing.dynamicallyCall(withKeywordArguments: ["options": chromeOptions])
         case .undetectedChrome:
+            let arguments: KeyValuePairs<String, PythonConvertible>
+
+            if let chromeBinaryPath {
+                arguments = [
+                    "headless": headless,
+                    "browser_executable_path": chromeBinaryPath
+                ]
+            } else {
+                arguments = [
+                    "headless": headless
+                ]
+            }
+
             driver = try dependencies.undetectedchromedriver.Chrome.throwing.dynamicallyCall(
-                withKeywordArguments: ["headless": headless]
+                withKeywordArguments: arguments
             )
         }
     }
