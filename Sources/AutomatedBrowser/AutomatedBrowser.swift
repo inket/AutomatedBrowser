@@ -22,6 +22,15 @@ public final class AutomatedBrowser {
     // MARK: - Lifecycle
 
     public init(browser: BrowserType, headless: Bool, chromeBinaryPath: String? = nil) throws {
+        #if os(macOS)
+        print("""
+        WARNING: It seems you are running this on macOS. There is a bug with chromium/selenium that creates a copy of Chrome every time it's ran (which ends up filling up your disk).
+        See https://issues.chromium.org/issues/379125944
+        Run the following command to find and delete them from time to time:
+            find /private/var/folders -name "com.google.Chrome.code_sign_clone" -exec rm -r -- {} + 2>/dev/null 
+        """)
+        #endif
+
         driver = try onMain {
             let sys = Self.dependencies.sys
             print("[AutomatedBrowser] Python \(sys.version_info.major).\(sys.version_info.minor)")
