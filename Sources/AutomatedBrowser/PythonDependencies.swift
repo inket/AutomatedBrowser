@@ -1,5 +1,6 @@
 import PythonKit
 
+@MainActor
 final class PythonDependencies {
     enum DependencyError: Error {
         case missingDependency(_ error: Error)
@@ -19,6 +20,6 @@ final class PythonDependencies {
             }
         }
 
-        return try! loadOrThrow(name)
+        return try! onMain { try loadOrThrow(name) }
     }
 }

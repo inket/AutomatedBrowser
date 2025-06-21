@@ -1,6 +1,7 @@
 import Foundation
 import PythonKit
 
+@MainActor
 public final class AutomatedBrowser {
     public enum BrowserType {
         case chrome(options: [String])
@@ -16,54 +17,58 @@ public final class AutomatedBrowser {
     }
 
     public let driver: PythonObject
-    private let dependencies = PythonDependencies()
+    private static let dependencies = PythonDependencies()
 
     // MARK: - Lifecycle
 
     public init(browser: BrowserType, headless: Bool, chromeBinaryPath: String? = nil) throws {
-        let sys = dependencies.sys
-        print("[AutomatedBrowser] Python \(sys.version_info.major).\(sys.version_info.minor)")
+        driver = try onMain {
+            let sys = Self.dependencies.sys
+            print("[AutomatedBrowser] Python \(sys.version_info.major).\(sys.version_info.minor)")
 
-        switch browser {
-        case .chrome(options: let options):
-            let webdriver = dependencies.webdriver
-            let chromeOptions = try webdriver.ChromeOptions.throwing.dynamicallyCall(withArguments: [])
+            switch browser {
+            case .chrome(options: let options):
+                let webdriver = Self.dependencies.webdriver
+                let chromeOptions = try webdriver.ChromeOptions.throwing.dynamicallyCall(withArguments: [])
 
-            if headless {
-                try chromeOptions.add_argument.throwing.dynamicallyCall(withArguments: "--headless=new")
+                if headless {
+                    try chromeOptions.add_argument.throwing.dynamicallyCall(withArguments: "--headless=new")
+                }
+
+                for option in options {
+                    try chromeOptions.add_argument.throwing.dynamicallyCall(withArguments: option)
+                }
+
+                if let chromeBinaryPath {
+                    chromeOptions.binary_location = chromeBinaryPath.pythonObject
+                }
+
+                return try webdriver.Chrome.throwing.dynamicallyCall(withKeywordArguments: ["options": chromeOptions])
+            case .undetectedChrome:
+                let arguments: KeyValuePairs<String, PythonConvertible>
+
+                if let chromeBinaryPath {
+                    arguments = [
+                        "headless": headless,
+                        "browser_executable_path": chromeBinaryPath
+                    ]
+                } else {
+                    arguments = [
+                        "headless": headless
+                    ]
+                }
+
+                return try Self.dependencies.undetectedchromedriver.Chrome.throwing.dynamicallyCall(
+                    withKeywordArguments: arguments
+                )
             }
-
-            for option in options {
-                try chromeOptions.add_argument.throwing.dynamicallyCall(withArguments: option)
-            }
-
-            if let chromeBinaryPath {
-                chromeOptions.binary_location = chromeBinaryPath.pythonObject
-            }
-
-            driver = try webdriver.Chrome.throwing.dynamicallyCall(withKeywordArguments: ["options": chromeOptions])
-        case .undetectedChrome:
-            let arguments: KeyValuePairs<String, PythonConvertible>
-
-            if let chromeBinaryPath {
-                arguments = [
-                    "headless": headless,
-                    "browser_executable_path": chromeBinaryPath
-                ]
-            } else {
-                arguments = [
-                    "headless": headless
-                ]
-            }
-
-            driver = try dependencies.undetectedchromedriver.Chrome.throwing.dynamicallyCall(
-                withKeywordArguments: arguments
-            )
         }
     }
 
     public func quit() throws {
-        try driver.quit.throwing.dynamicallyCall(withArguments: [])
+        try onMain {
+            try driver.quit.throwing.dynamicallyCall(withArguments: [])
+        }
     }
 }
 
@@ -72,21 +77,25 @@ public final class AutomatedBrowser {
 extension AutomatedBrowser {
     public var pageSource: String? {
         get throws {
-            guard let source = driver.checking[dynamicMember: "page_source"] else {
-                throw PythonError.invalidCall(driver)
-            }
+            try onMain {
+                guard let source = driver.checking[dynamicMember: "page_source"] else {
+                    throw PythonError.invalidCall(driver)
+                }
 
-            return String(source)
+                return String(source)
+            }
         }
     }
 
     public var currentURL: String? {
         get throws {
-            guard let url = driver.checking[dynamicMember: "current_url"] else {
-                throw PythonError.invalidCall(driver)
-            }
+            try onMain {
+                guard let url = driver.checking[dynamicMember: "current_url"] else {
+                    throw PythonError.invalidCall(driver)
+                }
 
-            return String(url)
+                return String(url)
+            }
         }
     }
 }
@@ -95,19 +104,27 @@ extension AutomatedBrowser {
 
 extension AutomatedBrowser {
     public func load(_ url: String) throws {
-        try driver.get.throwing.dynamicallyCall(withArguments: url)
+        try onMain {
+            try driver.get.throwing.dynamicallyCall(withArguments: url)
+        }
     }
 
     public func forward() throws {
-        try driver.forward.throwing.dynamicallyCall(withArguments: [])
+        try onMain {
+            try driver.forward.throwing.dynamicallyCall(withArguments: [])
+        }
     }
 
     public func back() throws {
-        try driver.back.throwing.dynamicallyCall(withArguments: [])
+        try onMain {
+            try driver.back.throwing.dynamicallyCall(withArguments: [])
+        }
     }
 
     public func refresh() throws {
-        try driver.refresh.throwing.dynamicallyCall(withArguments: [])
+        try onMain {
+            try driver.refresh.throwing.dynamicallyCall(withArguments: [])
+        }
     }
 }
 
@@ -115,8 +132,12 @@ extension AutomatedBrowser {
 
 extension AutomatedBrowser {
     public func saveCookies(toPath path: String) throws {
-        guard let cookiesJSON = String(dependencies.json.dumps(driver.get_cookies())) else {
-            throw BrowserError.noCookiesToSave
+        let cookiesJSON: String = try onMain {
+            guard let cookiesJSON = String(Self.dependencies.json.dumps(driver.get_cookies())) else {
+                throw BrowserError.noCookiesToSave
+            }
+
+            return cookiesJSON
         }
 
         do {
@@ -135,14 +156,18 @@ extension AutomatedBrowser {
             throw BrowserError.couldNotLoadCookies(error)
         }
 
-        let cookies = dependencies.json.loads(fileContents)
-        for cookie in cookies {
-            try driver.add_cookie.throwing.dynamicallyCall(withArguments: cookie)
+        try onMain {
+            let cookies = Self.dependencies.json.loads(fileContents)
+            for cookie in cookies {
+                try driver.add_cookie.throwing.dynamicallyCall(withArguments: cookie)
+            }
         }
     }
 
     public func deleteAllCookies() throws {
-        try driver.delete_all_cookies.throwing.dynamicallyCall(withArguments: [])
+        try onMain {
+            try driver.delete_all_cookies.throwing.dynamicallyCall(withArguments: [])
+        }
     }
 }
 
@@ -150,12 +175,14 @@ extension AutomatedBrowser {
 
 extension AutomatedBrowser {
     public func scroll(by amount: CGSize) throws {
-        try dependencies
-            .webdriver
-            .ActionChains(driver)
-            .scroll_by_amount(Int(amount.width), Int(amount.height))
-            .perform
-            .throwing
-            .dynamicallyCall(withArguments: [])
+        try onMain {
+            try Self.dependencies
+                .webdriver
+                .ActionChains(driver)
+                .scroll_by_amount(Int(amount.width), Int(amount.height))
+                .perform
+                .throwing
+                .dynamicallyCall(withArguments: [])
+        }
     }
 }
