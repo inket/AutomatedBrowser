@@ -1,7 +1,6 @@
 import Foundation
 import PythonKit
 
-@MainActor
 public final class AutomatedBrowser {
     public enum BrowserType {
         case chrome(options: [String])
@@ -31,7 +30,7 @@ public final class AutomatedBrowser {
         """)
         #endif
 
-        driver = try onMain {
+        driver = try PythonThread.run {
             let sys = Self.dependencies.sys
             print("[AutomatedBrowser] Python \(sys.version_info.major).\(sys.version_info.minor)")
 
@@ -75,8 +74,8 @@ public final class AutomatedBrowser {
     }
 
     public func quit() throws {
-        try onMain {
-            try driver.quit.throwing.dynamicallyCall(withArguments: [])
+        try PythonThread.run {
+            try self.driver.quit.throwing.dynamicallyCall(withArguments: [])
         }
     }
 }
@@ -86,9 +85,9 @@ public final class AutomatedBrowser {
 extension AutomatedBrowser {
     public var pageSource: String? {
         get throws {
-            try onMain {
-                guard let source = driver.checking[dynamicMember: "page_source"] else {
-                    throw PythonError.invalidCall(driver)
+            try PythonThread.run {
+                guard let source = self.driver.checking[dynamicMember: "page_source"] else {
+                    throw PythonError.invalidCall(self.driver)
                 }
 
                 return String(source)
@@ -98,9 +97,9 @@ extension AutomatedBrowser {
 
     public var currentURL: String? {
         get throws {
-            try onMain {
-                guard let url = driver.checking[dynamicMember: "current_url"] else {
-                    throw PythonError.invalidCall(driver)
+            try PythonThread.run {
+                guard let url = self.driver.checking[dynamicMember: "current_url"] else {
+                    throw PythonError.invalidCall(self.driver)
                 }
 
                 return String(url)
@@ -113,26 +112,26 @@ extension AutomatedBrowser {
 
 extension AutomatedBrowser {
     public func load(_ url: String) throws {
-        try onMain {
-            try driver.get.throwing.dynamicallyCall(withArguments: url)
+        try PythonThread.run {
+            try self.driver.get.throwing.dynamicallyCall(withArguments: url)
         }
     }
 
     public func forward() throws {
-        try onMain {
-            try driver.forward.throwing.dynamicallyCall(withArguments: [])
+        try PythonThread.run {
+            try self.driver.forward.throwing.dynamicallyCall(withArguments: [])
         }
     }
 
     public func back() throws {
-        try onMain {
-            try driver.back.throwing.dynamicallyCall(withArguments: [])
+        try PythonThread.run {
+            try self.driver.back.throwing.dynamicallyCall(withArguments: [])
         }
     }
 
     public func refresh() throws {
-        try onMain {
-            try driver.refresh.throwing.dynamicallyCall(withArguments: [])
+        try PythonThread.run {
+            try self.driver.refresh.throwing.dynamicallyCall(withArguments: [])
         }
     }
 }
@@ -141,8 +140,8 @@ extension AutomatedBrowser {
 
 extension AutomatedBrowser {
     public func saveCookies(toPath path: String) throws {
-        let cookiesJSON: String = try onMain {
-            guard let cookiesJSON = String(Self.dependencies.json.dumps(driver.get_cookies())) else {
+        let cookiesJSON: String = try PythonThread.run {
+            guard let cookiesJSON = String(Self.dependencies.json.dumps(self.driver.get_cookies())) else {
                 throw BrowserError.noCookiesToSave
             }
 
@@ -165,17 +164,17 @@ extension AutomatedBrowser {
             throw BrowserError.couldNotLoadCookies(error)
         }
 
-        try onMain {
+        try PythonThread.run {
             let cookies = Self.dependencies.json.loads(fileContents)
             for cookie in cookies {
-                try driver.add_cookie.throwing.dynamicallyCall(withArguments: cookie)
+                try self.driver.add_cookie.throwing.dynamicallyCall(withArguments: cookie)
             }
         }
     }
 
     public func deleteAllCookies() throws {
-        try onMain {
-            try driver.delete_all_cookies.throwing.dynamicallyCall(withArguments: [])
+        try PythonThread.run {
+            try self.driver.delete_all_cookies.throwing.dynamicallyCall(withArguments: [])
         }
     }
 }
@@ -184,10 +183,10 @@ extension AutomatedBrowser {
 
 extension AutomatedBrowser {
     public func scroll(by amount: CGSize) throws {
-        try onMain {
+        try PythonThread.run {
             try Self.dependencies
                 .webdriver
-                .ActionChains(driver)
+                .ActionChains(self.driver)
                 .scroll_by_amount(Int(amount.width), Int(amount.height))
                 .perform
                 .throwing

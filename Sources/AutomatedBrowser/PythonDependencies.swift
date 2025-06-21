@@ -1,6 +1,5 @@
 import PythonKit
 
-@MainActor
 final class PythonDependencies {
     enum DependencyError: Error {
         case missingDependency(_ error: Error)
@@ -20,6 +19,6 @@ final class PythonDependencies {
             }
         }
 
-        return try! onMain { try loadOrThrow(name) }
+        return try! PythonThread.run { try loadOrThrow(name) }
     }
 }
